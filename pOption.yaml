@@ -1,0 +1,87 @@
+# grid 
+pixnumSrc : 60 
+pixnumImg : 100 
+regSrc : 1.5 
+regImg : 4 
+imgcx : -0.17 
+imgcy : 0.2
+
+# source 1
+src1cx : -0.05
+src1cy : 0.05
+src1r : 0.1
+src1I : 100
+src1ar : 0.64
+src1PA : 113
+
+# source 2
+src2cx : -0.2
+src2cy : 0.2
+src2r : 0.1
+src2I : 0
+src2ar : 0.7
+src2PA : -45
+
+# sie
+sieThetaE : 0.9
+siecx : 0
+siecy : 0
+siePA : 45.0
+siear : 0.8
+
+# scattering
+scat_angle : 0.1
+scat_reg : -0.2, 1.2, -1.25, 0.2
+rand_trails : 3
+
+
+
+
+# # grid 
+# pixnumSrc : 60 
+# pixnumImg : 100 
+# regSrc : 1.5 
+# regImg : 4 
+# imgcx : -0.17 
+# imgcy : 0.2
+
+# # source 1
+# src1cx : -0.05
+# src1cy : 0.05
+# src1r : 0.1
+# src1I : 100
+# src1ar : 0.64
+# src1PA : 113
+
+# # source 2
+# src2cx : -0.4
+# src2cy : 0.25
+# src2r : 0.1
+# src2I : 50
+# src2ar : 1
+# src2PA : 0
+
+# # sie
+# sieThetaE : 0.9
+# siecx : 0
+# siecy : 0
+# siePA : 45.0
+# siear : 0.8
+
+# # scattering
+# scat_angle : 0.05
+# scat_reg : -0.2, 1.2, -1.25, 0.2
+# scat_times : 10
+
+
+
+
+
+
+
+
+
+
+
+
+
