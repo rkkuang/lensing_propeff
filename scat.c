@@ -21,7 +21,93 @@ void sub_setMtx(PetscReal px, PetscReal py, PetscReal resolution, PetscReal img_
 void getLmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscReal *ext, PetscReal resolution, PetscReal img_centerx, PetscReal img_centery, PetscInt *mnkl, PetscReal corrx, PetscReal corry, Mat Lmtx);
 void getSmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscReal *ext, PetscReal resolution, PetscReal img_centerx, PetscReal img_centery, PetscInt *mnkl, PetscReal corrx, PetscReal corry, Mat Smtx, PetscInt *scat_idx, PetscInt scat_idx_cnt);
 void genxyint(PetscInt xpixNum, PetscInt ypixNum, PetscInt *II, PetscInt *JJ);
+int pnpoly(PetscInt nvert, PetscReal *vertx, PetscReal *verty, PetscReal testx, PetscReal testy);
 
+
+// https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html
+// Argument  Meaning
+// nvert Number of vertices in the polygon. Whether to repeat the first vertex at the end is discussed below.
+// vertx, verty  Arrays containing the x- and y-coordinates of the polygon's vertices.
+// testx, testy  X- and y-coordinate of the test point.
+
+// min max of an array
+void minmax(PetscInt npnt, PetscReal *arr, PetscReal *minmax) {
+  int i;
+  PetscReal mmin, mmax;
+  mmin = arr[0];
+  mmax = arr[0];
+  for (i = 0; i < npnt; i++) {
+    if (arr[i] > mmax) mmax = arr[i];
+    if (arr[i] < mmin) mmin = arr[i];
+  }
+  minmax[0] = mmin;
+  minmax[1] = mmax;
+}
+
+int pnpoly(PetscInt nvert, PetscReal *vertx, PetscReal *verty, PetscReal testx, PetscReal testy)
+{
+  int i, j, c = 0;
+  for (i = 0, j = nvert - 1; i < nvert; j = i++) {
+    if ( ((verty[i] > testy) != (verty[j] > testy)) &&
+         (testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i]) )
+      c = !c;
+  }
+  return c;
+}
+
+PetscReal cross(PetscReal *v1, PetscReal *v2){
+  return v1[0]*v2[1] - v1[1]*v2[0];
+}
+
+PetscReal wgtedValue(PetscReal *xs, PetscReal *ys,PetscReal *vs, PetscReal x,PetscReal y){
+// https://stackoverflow.com/questions/23920976/bilinear-interpolation-with-non-aligned-input-points
+
+// For my problem I want to perform inverse bilinear interpolation on my inputs to find the alpha/beta values (u,v), and then use bilinear interpolation on the output values using those to come up with the desired output
+
+// https://www.iquilezles.org/www/articles/ibilinear/ibilinear.htm
+// first do the 'inverse bilinear interpolation'
+PetscReal E[2], F[2], G[2], H[2];
+E[0] = xs[1] - xs[0]; E[1] = ys[1] - ys[0]; // B - A
+F[0] = xs[3] - xs[0]; F[1] = ys[3] - ys[0]; // D - A
+G[0] = -E[0] + xs[2] - xs[3]; G[1] = -E[1] + ys[2] - ys[3]; // A - B + C - D
+H[0] = x - xs[0]; H[1] = y - ys[0]; // X - A
+
+PetscReal k2, k1, k0, u, v, w, ik2, res;
+k2 = cross(G, F);
+k1 = cross(E, F) + cross(H, G);
+k0 = cross(H, E);
+
+    // if edges are parallel, this is a linear equation
+    if( fabs(k2)<1e-5 )
+    {
+        u = (H[0]*k1+F[0]*k0)/(E[0]*k1-G[0]*k0);
+        v =  -k0/k1;
+    }
+    // otherwise, it's a quadratic
+    else
+    {
+         w = k1*k1 - 4.0*k0*k2;
+        // if( w<0.0 ) return vec2(-1.0); // point outside
+
+        w = sqrt( w );
+
+         ik2 = 0.5/k2;
+         v = (-k1 - w)*ik2;
+         u = (H[0] - F[0]*v)/(E[0] + G[0]*v);
+        
+        if( u<0.0 || u>1.0 || v<0.0 || v>1.0 )
+        {
+           v = (-k1 + w)*ik2;
+           u = (H[0] - F[0]*v)/(E[0] + G[0]*v);
+        }
+    }
+
+// fprintf(stderr, "%f, %f\n", u, v);
+    res = vs[0]*(1-u)*(1-v) + vs[1]*u*(1-v) + vs[2]*u*v + vs[3]*(1-u)*v;
+    // fprintf(stderr, "%f, %f, %f, %f, %f \n", res, vs[0], vs[1], vs[2], vs[3] );
+return res;
+
+}
 
 // source surface brightness profile
 void exp_brightness(PetscReal scale_length, PetscReal central_bright, PetscReal ax_ratio, PetscReal PA, PetscReal physical_centerx, PetscReal physical_centery, PetscInt size, PetscReal *xs, PetscReal *ys, PetscReal *Iprof)
@@ -343,12 +429,13 @@ int main(int argc, char **argv)
   PetscOptionsGetInt(NULL, NULL, "-scat_reg_num", &scat_reg_num, NULL);
 
   nlimits = 4 * scat_reg_num;
-  PetscReal scat_reg[nlimits], scat_angle[scat_reg_num];// = { -0.2, 1.2, -1.25, 0.2};
+  PetscReal scat_reg[nlimits], scat_reg_vertx[nlimits], scat_reg_verty[nlimits], scat_angle[nlimits];// = { -0.2, 1.2, -1.25, 0.2};
   PetscInt scat_types[scat_reg_num];
 
   PetscOptionsGetIntArray(NULL, NULL, "-scat_types", scat_types, &scat_reg_num, NULL);
-  PetscOptionsGetRealArray(NULL, NULL, "-scat_angle", scat_angle, &scat_reg_num, NULL);
-  PetscOptionsGetRealArray(NULL, NULL, "-scat_reg", scat_reg, &nlimits,  NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-scat_angle", scat_angle, &nlimits, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-scat_reg_vertx", scat_reg_vertx, &nlimits,  NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-scat_reg_verty", scat_reg_verty, &nlimits,  NULL);
   PetscOptionsGetInt(NULL, NULL, "-rand_trails", &scat_times, NULL);
 
 
@@ -528,20 +615,47 @@ int main(int argc, char **argv)
   // Computes Y = a*X + Y.
   // MatAXPY(Mat Y,PetscScalar a,Mat X,MatStructure str) //https://petsc.org/release/docs/manualpages/Mat/MatAXPY.html
 
-  for (i = 0; i < Nimg; i++) {
-    for (j = 0; j < scat_reg_num; j++) {
-      if (scat_types[j] == 0){ // uniform sheet of scattering angle
-        if (physx_lens[i] > scat_reg[0 + j * 4] && physx_lens[i] < scat_reg[1 + j * 4] && physy_lens[i] > scat_reg[2 + j * 4] && physy_lens[i] < scat_reg[3 + j * 4]) {
-          scat_idx[scat_idx_cnt] = i;
-          scatang_array[i] = scat_angle[j];
-          scat_idx_cnt += 1;
-          break;
+  PetscReal minmax2[2], minmax4[4];
+
+
+  for (j = 0; j < scat_reg_num; j++) {
+    if (scat_types[j] == 0) {
+      minmax(4, scat_reg_vertx, minmax2);
+      minmax4[0] = minmax2[0]; minmax4[1] = minmax2[1];
+      minmax(4, scat_reg_verty, minmax2);
+      minmax4[2] = minmax2[0]; minmax4[3] = minmax2[1];
+
+      for (i = 0; i < Nimg; i++) {
+
+        // uniform sheet of scattering angle
+
+        // if (physx_lens[i] > scat_reg[0 + j * 4] && physx_lens[i] < scat_reg[1 + j * 4] && physy_lens[i] > scat_reg[2 + j * 4] && physy_lens[i] < scat_reg[3 + j * 4]) {
+        //   scat_idx[scat_idx_cnt] = i;
+        //   scatang_array[i] = scat_angle[j];
+        //   scat_idx_cnt += 1;
+        //   break;
+        // }
+
+        if (!(physx_lens[i] < minmax4[0] || physx_lens[i] > minmax4[1] || physy_lens[i] < minmax4[2] || physy_lens[i] > minmax4[3])) {
+          if ( pnpoly(4, scat_reg_vertx, scat_reg_verty, physx_lens[i], physy_lens[i]) ) {
+          // if ( 1 ) {
+            scat_idx[scat_idx_cnt] = i;
+            // scatang_array[i] = scat_angle[j];
+
+            // scat ang by weighting: https://stackoverflow.com/questions/23920976/bilinear-interpolation-with-non-aligned-input-points
+
+            scatang_array[i] = wgtedValue(scat_reg_vertx, scat_reg_verty, scat_angle, physx_lens[i], physy_lens[i]);
+
+
+            scat_idx_cnt += 1;
+          }
         }
+
+        physx_lens_[i] = physx_lens[i];
+        physy_lens_[i] = physy_lens[i];
+
       }
     }
-
-    physx_lens_[i] = physx_lens[i];
-    physy_lens_[i] = physy_lens[i];
   }
 
   VecSet(img1d_scat_sum, 0);

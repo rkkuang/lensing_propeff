@@ -12,7 +12,7 @@ imgcy : 0.2
 srcnum : 2
 src1cx : -0.05, -0.2
 src1cy : 0.05, 0.2
-src1r : 0.1, 0.1
+src1r : 0.2, 0.1
 src1I : 100, 30
 src1ar : 0.64, 0.7
 src1PA : 113, -45
@@ -33,11 +33,38 @@ siePA : 45.0
 siear : 0.8
 
 # scattering
-scat_reg_num : 2
-scat_types : 0, 0
-scat_angle : 0.1, 0.05
-scat_reg : -0.2, 1.2, -1.25, 0.2, -1.2, -0.5, -1.25, 0.2
-rand_trails : 30
+scat_reg_num : 1
+scat_types : 0
+scat_angle : 0.05, 0, 0.3, 0
+
+# start from upper-left and go clockwise
+# scat_reg_vertx : -0.2, 1.2, 1.2, -0.2
+# scat_reg_verty : 0.2, 0.2, -1.25, -1.25
+
+# scat_reg_vertx : -0.22, 0.61, 1.07, 0.15
+# scat_reg_verty : -0.53, 0.03, -0.4, -1.1
+
+# scat_reg_vertx : -1.23, -0.73, -0.73, -1.23
+# scat_reg_verty : 0.3, 0.3, -0.36, -0.36
+
+
+scat_reg_vertx : -1, 1, 1, -1
+scat_reg_verty : 1, 1, -1, -1
+
+### version 1
+# // scat_reg contains the [xmin, xmax, ymin, ymax] of each patch of scattering screen
+
+### version 2
+# now scat_reg contains [xa, ya, xb, yb, xc, yc, xd, yd], i.e., coords of the four corner
+# and scat_angle contains the scattering angle value at the corner (a, b, c, d), and 'abcd' should in clockwise or anti-clockwise
+# then we use biliner interpolation to calculate the scattering angle at an arbitrary coord (x, y)
+# we need to judge whether (x, y) is inside the box of abcd, and obtain their weights
+
+# https://www.particleincell.com/2012/quad-interpolation/
+# https://stackoverflow.com/questions/217578/how-can-i-determine-whether-a-2d-point-is-within-a-polygon/2922778#2922778
+
+
+rand_trails : 5
 
 ### later, you'd better just use an external file to specify the 
 # array of scattering angle, instead of use parametric 2d function ?
@@ -45,7 +72,7 @@ rand_trails : 30
 
 
 
-# # grid 
+# # grid
 # pixnumSrc : 60 
 # pixnumImg : 100 
 # regSrc : 1.5 
