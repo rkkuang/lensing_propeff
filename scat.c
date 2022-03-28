@@ -1,12 +1,12 @@
 static char help[] = "Basic Lensing operator and Scattering operator.\n";
 /*
- 
+
  Example code of lensing with scattering effect
- 
- This file can be compiled with "make scat" using the example PETSc makefile at 
+
+ This file can be compiled with "make scat" using the example PETSc makefile at
  https://github.com/petsc/petsc/blob/main/share/petsc/Makefile.user
 
- There are three output *.dat files corresponding to the source, lensed image, and lensed image with scattering effect, which are in ASCII format, and can be visualized with pyplot.py   
+ There are three output *.dat files corresponding to the source, lensed image, and lensed image with scattering effect, which are in ASCII format, and can be visualized with pyplot.py
 
  */
 
@@ -33,6 +33,8 @@ void exp_brightness(PetscReal scale_length, PetscReal central_bright, PetscReal 
   ar2 = ax_ratio * ax_ratio;
 
   for (i = 0; i < size; i++) {
+    Iprof[i] = 0;
+
     xs_Xc = xs[i] - physical_centerx;
     ys_Yc = ys[i] - physical_centery;
     u = xs_Xc * costheta + ys_Yc * sintheta;
@@ -101,46 +103,46 @@ void SIE_deflect_ang(PetscInt size, PetscReal *xs, PetscReal *ys, PetscReal re, 
 
 
 void sub_setMtx(PetscReal px, PetscReal py, PetscReal resolution, PetscReal img_centerx, PetscReal img_centery, PetscInt L, PetscInt j, PetscReal const1, PetscReal const2, Mat Mtx) {
-PetscReal px_pix, py_pix, corner1x, corner1y, corner2x, corner2y, xweight, yweight;
-PetscInt xcorrect, ycorrect, jj, I1, J1, I2, J2, I3, J3, I4, J4;   
-PetscScalar    v;   
-      //# determine which 4 pixels in source plane enclose (px, py), and the corresponding weights, then place them in the j-th raw of the Lmtx array
-      px -= img_centerx;
-      py -= img_centery;
-      px_pix = (px / resolution);
-      py_pix = (py / resolution);
+  PetscReal px_pix, py_pix, corner1x, corner1y, corner2x, corner2y, xweight, yweight;
+  PetscInt xcorrect, ycorrect, jj, I1, J1, I2, J2, I3, J3, I4, J4;
+  PetscScalar    v;
+  //# determine which 4 pixels in source plane enclose (px, py), and the corresponding weights, then place them in the j-th raw of the Lmtx array
+  px -= img_centerx;
+  py -= img_centery;
+  px_pix = (px / resolution);
+  py_pix = (py / resolution);
 
-      xcorrect = (px_pix > 0) ? -1 : 1;
-      ycorrect = (py_pix > 0) ? -1 : 1;
+  xcorrect = (px_pix > 0) ? -1 : 1;
+  ycorrect = (py_pix > 0) ? -1 : 1;
 
-      corner1x = (int)(round(px_pix)) + 0.5 * xcorrect;
-      corner1y = (int)(round(py_pix)) + 0.5 * ycorrect;
+  corner1x = (int)(round(px_pix)) + 0.5 * xcorrect;
+  corner1y = (int)(round(py_pix)) + 0.5 * ycorrect;
 
-      yweight = fabs(py_pix - corner1y);
-      xweight = fabs(px_pix - corner1x);
+  yweight = fabs(py_pix - corner1y);
+  xweight = fabs(px_pix - corner1x);
 
-      corner2x = corner1x - xcorrect;
-      corner2y = corner1y - ycorrect;
+  corner2x = corner1x - xcorrect;
+  corner2y = corner1y - ycorrect;
 
-      J1 = (int)(-(corner1y + const1)); //# numpy 数组 里的行
-      I1 = (int)(corner1x + const2); //# numpy 数组里的列
-      jj = I1 * L + J1; v = (1 - xweight) * (1 - yweight);
-      MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
+  J1 = (int)(-(corner1y + const1)); //# numpy 数组 里的行
+  I1 = (int)(corner1x + const2); //# numpy 数组里的列
+  jj = I1 * L + J1; v = (1 - xweight) * (1 - yweight);
+  MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
 
-      J2 = (int)(-(corner2y + const1));
-      I2 = (int)(corner1x + const2);
-      jj = I2 * L + J2; v = (1 - xweight) * yweight;
-      MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
+  J2 = (int)(-(corner2y + const1));
+  I2 = (int)(corner1x + const2);
+  jj = I2 * L + J2; v = (1 - xweight) * yweight;
+  MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
 
-      J3 = (int)(-(corner2y + const1));
-      I3 = (int)(corner2x + const2);
-      jj = I3 * L + J3; v = xweight * yweight;
-      MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
+  J3 = (int)(-(corner2y + const1));
+  I3 = (int)(corner2x + const2);
+  jj = I3 * L + J3; v = xweight * yweight;
+  MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
 
-      J4 = (int)(-(corner1y + const1));
-      I4 = (int)(corner2x + const2);
-      jj = I4 * L + J4; v = xweight * (1 - yweight);
-      MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
+  J4 = (int)(-(corner1y + const1));
+  I4 = (int)(corner2x + const2);
+  jj = I4 * L + J4; v = xweight * (1 - yweight);
+  MatSetValues(Mtx, 1, &j, 1, &jj, &v, INSERT_VALUES);
 
 }
 
@@ -160,7 +162,7 @@ void getLmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscRea
   MatZeroEntries(Lmtx);
   MatGetOwnershipRange(Lmtx, &row_start, &row_end);
 
-  for (i = row_start; i < row_end; i++){
+  for (i = row_start; i < row_end; i++) {
 
     if ( (physx_src[i] > (ext[0] + resolution)) && (physx_src[i] < (ext[1] - resolution)) && (physy_src[i] > (ext[2] + resolution)) && (physy_src[i] < (ext[3] - resolution))) {
       px = physx_src[i]; py = physy_src[i];
@@ -200,7 +202,7 @@ void getSmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscRea
 
   MatGetOwnershipRange(Smtx, &row_start, &row_end);
   v = 1.0;
-  for (ii = row_start; ii < row_end; ii++){
+  for (ii = row_start; ii < row_end; ii++) {
     MatSetValues(Smtx, 1, &ii, 1, &ii, &v, INSERT_VALUES);
   }
 
@@ -276,9 +278,9 @@ double* generate(int n)
 int main(int argc, char **argv)
 {
   PetscReal corrx, corry, resolution, resol_imgplane, xyregion, img_centerx, img_centery;// img_plane_centerx, img_plane_centery;
-  PetscInt xpixNum, ypixNum,  M, N, Nsrc, Nimg, i, scat_times, nlimits = 4;
-  PetscReal physical_center1x, physical_center1y, scale_length1, central_bright1, ax_ratio1, PA1;
-  PetscReal physical_center2x, physical_center2y, scale_length2, central_bright2, ax_ratio2, PA2;
+  PetscInt xpixNum, ypixNum,  M, N, Nsrc, Nimg, i, j, scat_times, nlimits = 4, scat_reg_num, srcnum;
+
+  // PetscReal physical_center2x, physical_center2y, scale_length2, central_bright2, ax_ratio2, PA2;
 
 
 
@@ -287,56 +289,67 @@ int main(int argc, char **argv)
 
   // # source plane grid number and resolution
   // xpixNum = 60;
-  // ypixNum = 60; 
-  
-  
+  // ypixNum = 60;
+
+
 
   // # image plane pixel number and resolution
-  
+
   PetscReal sieThetaE, siecx, siecy, siePA, siear;
 
   // PetscInitialize(&argc, &argv, (char*)0, help);
 
   // PetscInitialize(int *argc, char ***args,const char *file,const char *help); /* C */
 
-  PetscReal scat_reg[4];// = { -0.2, 1.2, -1.25, 0.2};
 
-  PetscReal scat_angle;
+
+  // PetscReal scat_angle;
   // scat_angle = 0.05;
 
   PetscInitialize(&argc, &argv, "pOption.yaml", help);
 
-  PetscOptionsGetInt(NULL,NULL,"-pixnumSrc",&ypixNum, NULL);
-  PetscOptionsGetInt(NULL,NULL,"-pixnumImg",&M, NULL);
+  PetscOptionsGetInt(NULL, NULL, "-pixnumSrc", &ypixNum, NULL);
+  PetscOptionsGetInt(NULL, NULL, "-pixnumImg", &M, NULL);
 
-  PetscOptionsGetReal(NULL,NULL,"-regSrc",&resolution, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-regImg",&resol_imgplane, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-imgcx",&img_centerx, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-imgcy",&img_centery, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-regSrc", &resolution, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-regImg", &resol_imgplane, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-imgcx", &img_centerx, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-imgcy", &img_centery, NULL);
 
-  PetscOptionsGetReal(NULL,NULL,"-src1cx",&physical_center1x, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src1cy",&physical_center1y, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src1r",&scale_length1, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src1I",&central_bright1, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src1ar",&ax_ratio1, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src1PA",&PA1, NULL);
+  PetscOptionsGetInt(NULL, NULL, "-srcnum", &srcnum, NULL);
 
-  PetscOptionsGetReal(NULL,NULL,"-src2cx",&physical_center2x, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src2cy",&physical_center2y, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src2r",&scale_length2, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src2I",&central_bright2, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src2ar",&ax_ratio2, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-src2PA",&PA2, NULL);
+  PetscReal physical_center1x[srcnum], physical_center1y[srcnum], scale_length1[srcnum], central_bright1[srcnum], ax_ratio1[srcnum], PA1[srcnum];
 
-  PetscOptionsGetReal(NULL,NULL,"-sieThetaE",&sieThetaE, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-siecx",&siecx, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-siecy",&siecy, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-siePA",&siePA, NULL);
-  PetscOptionsGetReal(NULL,NULL,"-siear",&siear, NULL);
-  
-  PetscOptionsGetReal(NULL,NULL,"-scat_angle",&scat_angle, NULL);
-  PetscOptionsGetRealArray(NULL,NULL,"-scat_reg", scat_reg, &nlimits,  NULL);
-  PetscOptionsGetInt(NULL,NULL,"-rand_trails",&scat_times, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-src1cx", physical_center1x, &srcnum, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-src1cy", physical_center1y, &srcnum, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-src1r", scale_length1, &srcnum, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-src1I", central_bright1, &srcnum, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-src1ar", ax_ratio1, &srcnum, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-src1PA", PA1, &srcnum, NULL);
+
+  // PetscOptionsGetReal(NULL,NULL,"-src2cx",&physical_center2x, NULL);
+  // PetscOptionsGetReal(NULL,NULL,"-src2cy",&physical_center2y, NULL);
+  // PetscOptionsGetReal(NULL,NULL,"-src2r",&scale_length2, NULL);
+  // PetscOptionsGetReal(NULL,NULL,"-src2I",&central_bright2, NULL);
+  // PetscOptionsGetReal(NULL,NULL,"-src2ar",&ax_ratio2, NULL);
+  // PetscOptionsGetReal(NULL,NULL,"-src2PA",&PA2, NULL);
+
+  PetscOptionsGetReal(NULL, NULL, "-sieThetaE", &sieThetaE, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-siecx", &siecx, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-siecy", &siecy, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-siePA", &siePA, NULL);
+  PetscOptionsGetReal(NULL, NULL, "-siear", &siear, NULL);
+
+  PetscOptionsGetInt(NULL, NULL, "-scat_reg_num", &scat_reg_num, NULL);
+
+  nlimits = 4 * scat_reg_num;
+  PetscReal scat_reg[nlimits], scat_angle[scat_reg_num];// = { -0.2, 1.2, -1.25, 0.2};
+  PetscInt scat_types[scat_reg_num];
+
+  PetscOptionsGetIntArray(NULL, NULL, "-scat_types", scat_types, &scat_reg_num, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-scat_angle", scat_angle, &scat_reg_num, NULL);
+  PetscOptionsGetRealArray(NULL, NULL, "-scat_reg", scat_reg, &nlimits,  NULL);
+  PetscOptionsGetInt(NULL, NULL, "-rand_trails", &scat_times, NULL);
 
 
 
@@ -346,13 +359,13 @@ int main(int argc, char **argv)
   // scale_length1 = 0.1;
   // central_bright1 = 100;
   // ax_ratio1 = 0.64;
-  PA1 = PA1 / 180.0 * M_PI;
+  // PA1 = PA1 / 180.0 * M_PI;
 
   // physical_center2x = -0.4; physical_center2y = 0.25;
   // scale_length2 = 0.1;
   // central_bright2 = 50;
   // ax_ratio2 = 1;
-  PA2 = PA2 / 180.0 * M_PI;
+  // PA2 = PA2 / 180.0 * M_PI;
 
 
   // PetscReal re, PetscReal Lxc, PetscReal Lyc, PetscReal PA, PetscReal f
@@ -363,11 +376,12 @@ int main(int argc, char **argv)
 
   // ./scat -pixnumSrc 60 -pixnumImg 100 -regSrc 1.5 -regImg 4 -imgcx -0.17 -imgcy 0.2
 
-  
+
   xpixNum = ypixNum;
   resolution = resolution / ypixNum;
   Nsrc = xpixNum * ypixNum;
-  N = M; Nimg = M * N;
+  N = M;
+  Nimg = M * N;
 
   xyregion = resol_imgplane;
   resol_imgplane = resol_imgplane / M; // #xyregion/M
@@ -393,11 +407,18 @@ int main(int argc, char **argv)
 
   pixel_physical_position(resolution, xpixNum, ypixNum, img_centerx, img_centery, Nsrc, II, JJ, corrx, corry, physx, physy);
 
-  exp_brightness(scale_length1, central_bright1, ax_ratio1, PA1, physical_center1x, physical_center1y, Nsrc, physx, physy, Iprof1);
-  exp_brightness(scale_length2, central_bright2, ax_ratio2, PA2, physical_center2x, physical_center2y, Nsrc, physx, physy, Iprof2);
+  // exp_brightness(scale_length1, central_bright1, ax_ratio1, PA1, physical_center1x, physical_center1y, Nsrc, physx, physy, Iprof1);
+  // exp_brightness(scale_length2, central_bright2, ax_ratio2, PA2, physical_center2x, physical_center2y, Nsrc, physx, physy, Iprof2);
+
+  for (i = 0; i < srcnum; i++) {
+    exp_brightness(scale_length1[i], central_bright1[i], ax_ratio1[i], PA1[i] / 180.*M_PI, physical_center1x[i], physical_center1y[i], Nsrc, physx, physy, Iprof1);
+    for (int j = 0; j < Nsrc; j++) {
+      Iprof2[j] += Iprof1[j];
+    }
+  }
 
   Vec src1d;
-  PetscScalar tmp_scalar;
+  // PetscScalar tmp_scalar;
   VecCreate(PETSC_COMM_WORLD, &src1d); // In most cases users can employ the communicator PETSC_COMM_WORLD to indicate all processes in a given run and PETSC_COMM_SELF to indicate a single process.
   VecSetSizes(src1d, PETSC_DECIDE, Nsrc);
   VecSetFromOptions(src1d);
@@ -405,8 +426,8 @@ int main(int argc, char **argv)
   // fprintf(stderr, "can you 245 \n");
 
   for (int i = 0; i < Nsrc; i++) {
-    tmp_scalar = Iprof1[i] + Iprof2[i];
-    VecSetValue(src1d, i, tmp_scalar, INSERT_VALUES);
+    // tmp_scalar = Iprof2[i];
+    VecSetValue(src1d, i, Iprof2[i], INSERT_VALUES);
   }
   VecAssemblyBegin(src1d);
   VecAssemblyEnd(src1d);
@@ -431,8 +452,7 @@ int main(int argc, char **argv)
   //sieThetaE, siecx, siecy, siePA, siear;
 
   // PetscReal scat_angle, scatx[Nimg], scaty[Nimg], scatx_reg[Nimg] = 0, scaty_reg[Nimg] = 0, physx_lens_[Nimg], physy_lens_[Nimg];
-  PetscReal scatx_reg, scaty_reg, physx_lens_[Nimg], physy_lens_[Nimg];
-
+  PetscReal scatx_reg, scaty_reg, physx_lens_[Nimg], physy_lens_[Nimg], scatang_array[Nimg];
 
 
   PetscInt scat_idx[Nimg], scat_idx_cnt = 0;
@@ -440,6 +460,7 @@ int main(int argc, char **argv)
   for (int i = 0; i < Nimg; i++) {
     physx_src[i] = physx_lens[i] - dxSIE[i];
     physy_src[i] = physy_lens[i] - dySIE[i];
+    scatang_array[i] = 0;
   }
 
   Mat Lmtx, Smtx, Smtx_sum; //Lmtx2
@@ -501,17 +522,24 @@ int main(int argc, char **argv)
   PetscScalar vecsum;
   PetscReal matnorm;
 
-  
+
 
 
   // Computes Y = a*X + Y.
   // MatAXPY(Mat Y,PetscScalar a,Mat X,MatStructure str) //https://petsc.org/release/docs/manualpages/Mat/MatAXPY.html
 
   for (i = 0; i < Nimg; i++) {
-    if (physx_lens[i] > scat_reg[0] && physx_lens[i] < scat_reg[1] && physy_lens[i] > scat_reg[2] && physy_lens[i] < scat_reg[3]) {
-      scat_idx[scat_idx_cnt] = i;
-      scat_idx_cnt += 1;
+    for (j = 0; j < scat_reg_num; j++) {
+      if (scat_types[j] == 0){ // uniform sheet of scattering angle
+        if (physx_lens[i] > scat_reg[0 + j * 4] && physx_lens[i] < scat_reg[1 + j * 4] && physy_lens[i] > scat_reg[2 + j * 4] && physy_lens[i] < scat_reg[3 + j * 4]) {
+          scat_idx[scat_idx_cnt] = i;
+          scatang_array[i] = scat_angle[j];
+          scat_idx_cnt += 1;
+          break;
+        }
+      }
     }
+
     physx_lens_[i] = physx_lens[i];
     physy_lens_[i] = physy_lens[i];
   }
@@ -528,27 +556,27 @@ int main(int argc, char **argv)
       i = scat_idx[ii];
       randxy = generate(2);
 
-      scatx_reg = 0 + scat_angle * randxy[0];//random_normal();
-      scaty_reg = 0 + scat_angle * randxy[1];//random_normal();
+      scatx_reg = 0 + scatang_array[i] * randxy[0];//random_normal();
+      scaty_reg = 0 + scatang_array[i] * randxy[1];//random_normal();
 
       physx_lens_[i] = physx_lens[i] + scatx_reg;
       physy_lens_[i] = physy_lens[i] + scaty_reg;
 
     }
 
-    
+
     getSmtx(Nimg, physx_lens_, physy_lens_, extimg, resol_imgplane, img_centerx, img_centery, mnmn, corrx, corry, Smtx, scat_idx, scat_idx_cnt);
 
     // MatMult(Smtx, img1d, img1d_scat); // scattered image
 
     // VecAXPY(img1d_scat_sum, 1, img1d_scat);
-    
+
     MatAXPY(Smtx_sum, 1.0, Smtx, DIFFERENT_NONZERO_PATTERN);
 
   }
 
   // VecScale(img1d_scat_sum, 1.0 / scat_times);
-  
+
 
 
   MatScale(Smtx_sum, 1.0 / scat_times);
@@ -556,7 +584,7 @@ int main(int argc, char **argv)
 
 
   MatMult(Smtx_sum, img1d, img1d_scat_sum); // scattered image
-  
+
 
   VecSum(img1d, &vecsum);
   printf("sum w/o scattering %f \n", vecsum);
