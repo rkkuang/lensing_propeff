@@ -32,7 +32,7 @@ siear : 0.8
 # scattering
 scat_angle : 0.1
 scat_reg : -0.2, 1.2, -1.25, 0.2
-rand_trails : 3
+rand_trails : 30
 
 
 

@@ -147,7 +147,7 @@ PetscScalar    v;
 // construct the Lensing operator
 void getLmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscReal *ext, PetscReal resolution, PetscReal img_centerx, PetscReal img_centery, PetscInt *mnkl, PetscReal corrx, PetscReal corry, Mat Lmtx) {
 // # we should obtain the Lensing operator:
-  PetscInt M, N, K, L, xpixNum, ypixNum, i;//, xcorrect, ycorrect, I1, J1, I2, J2, I3, J3, I4, J4;
+  PetscInt M, N, K, L, xpixNum, ypixNum, i, row_start, row_end;//, xcorrect, ycorrect, I1, J1, I2, J2, I3, J3, I4, J4;
   // PetscBool cnd1, cnd2, cnd3, cnd4, cnd;
   PetscReal const1, const2, px, py;// px_pix, py_pix, corner1x, corner1y, corner2x, corner2y, xweight, yweight;
 
@@ -158,19 +158,31 @@ void getLmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscRea
   const1 = -corry - ypixNum * 0.5;
   const2 = -corrx + xpixNum * 0.5;
   MatZeroEntries(Lmtx);
-  for (i = 0; i < size; i++) {
+  MatGetOwnershipRange(Lmtx, &row_start, &row_end);
+
+  for (i = row_start; i < row_end; i++){
+
     if ( (physx_src[i] > (ext[0] + resolution)) && (physx_src[i] < (ext[1] - resolution)) && (physy_src[i] > (ext[2] + resolution)) && (physy_src[i] < (ext[3] - resolution))) {
       px = physx_src[i]; py = physy_src[i];
       sub_setMtx(px, py, resolution, img_centerx, img_centery, L, i, const1, const2, Lmtx);
     }
+
   }
+
+  // for (i = 0; i < size; i++) {
+  //   if ( (physx_src[i] > (ext[0] + resolution)) && (physx_src[i] < (ext[1] - resolution)) && (physy_src[i] > (ext[2] + resolution)) && (physy_src[i] < (ext[3] - resolution))) {
+  //     px = physx_src[i]; py = physy_src[i];
+  //     sub_setMtx(px, py, resolution, img_centerx, img_centery, L, i, const1, const2, Lmtx);
+  //   }
+  // }
+
   MatAssemblyBegin(Lmtx, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Lmtx, MAT_FINAL_ASSEMBLY);
 }
 
 
 void getSmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscReal *ext, PetscReal resolution, PetscReal img_centerx, PetscReal img_centery, PetscInt *mnkl, PetscReal corrx, PetscReal corry, Mat Smtx, PetscInt *scat_idx, PetscInt scat_idx_cnt) {
-  PetscInt M, N, K, L, xpixNum, ypixNum, i, ii;//, j, ii, jj, xcorrect, ycorrect, I1, J1, I2, J2, I3, J3, I4, J4;
+  PetscInt M, N, K, L, xpixNum, ypixNum, i, ii, row_start, row_end;//, j, ii, jj, xcorrect, ycorrect, I1, J1, I2, J2, I3, J3, I4, J4;
   PetscReal const1, const2, px, py;//, px_pix, py_pix, corner1x, corner1y, corner2x, corner2y, xweight, yweight;
   PetscScalar    v;
   M = mnkl[0]; N = mnkl[1]; K = mnkl[2]; L = mnkl[3];
@@ -179,10 +191,20 @@ void getSmtx(PetscInt size, PetscReal *physx_src, PetscReal *physy_src, PetscRea
   const2 = -corrx + xpixNum * 0.5;
 
   MatZeroEntries(Smtx);
-  for (ii = 0; ii < size; ii++) {
-    v = 1.0;
+
+
+  // for (ii = 0; ii < size; ii++) {
+  //   v = 1.0;
+  //   MatSetValues(Smtx, 1, &ii, 1, &ii, &v, INSERT_VALUES);
+  // }
+
+  MatGetOwnershipRange(Smtx, &row_start, &row_end);
+  v = 1.0;
+  for (ii = row_start; ii < row_end; ii++){
     MatSetValues(Smtx, 1, &ii, 1, &ii, &v, INSERT_VALUES);
   }
+
+
   for (ii = 0; ii < scat_idx_cnt; ii++) {
     i = scat_idx[ii];
     if ( (physx_src[i] > (ext[0] + resolution)) && (physx_src[i] < (ext[1] - resolution)) && (physy_src[i] > (ext[2] + resolution)) && (physy_src[i] < (ext[3] - resolution))) {
@@ -423,9 +445,23 @@ int main(int argc, char **argv)
   Mat Lmtx, Smtx, Smtx_sum; //Lmtx2
   MatCreate(PETSC_COMM_WORLD, &Lmtx); // PETSC_COMM_WORLD -- multi process
   MatSetSizes(Lmtx, PETSC_DECIDE, PETSC_DECIDE, Nimg, Nsrc);
-  MatSetType(Lmtx, MATAIJ);
+  // MatSetType(Lmtx, MATAIJ);
   MatSetFromOptions(Lmtx);
-  MatSetUp(Lmtx);
+  // MatSetUp(Lmtx);
+
+
+  // MatMPIAIJSetPreallocation(Lmtx, 2, NULL, 2, NULL);
+  // Preallocates memory for a sparse parallel matrix in AIJ format (the default parallel PETSc format).
+  MatSeqAIJSetPreallocation(Lmtx, 4, NULL);
+
+
+  // MatGetOwnershipRange(Lmtx, &row_start, &row_end);
+  // Returns the range of matrix rows owned by this processor, assuming that the matrix is laid out with the first n1 rows on the first processor, the next n2 rows on the second, etc. For certain parallel layouts this range may not be well defined.
+
+  // m - the global index of the first local row
+  // n - one more than the global index of the last local row
+
+
 
   PetscInt mnkl[4] = {M, N, xpixNum, ypixNum};
   PetscInt mnmn[4] = {M, N, M, N};
@@ -451,6 +487,7 @@ int main(int argc, char **argv)
   MatSetSizes(Smtx, PETSC_DECIDE, PETSC_DECIDE, Nimg, Nimg);
   MatSetType(Smtx, MATAIJ);
   MatSetFromOptions(Smtx);
+  // MatSeqAIJSetPreallocation(Smtx, 4, NULL);
   MatSetUp(Smtx);
 
   MatCreate(PETSC_COMM_WORLD, &Smtx_sum);
